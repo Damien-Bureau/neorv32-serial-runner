@@ -5,6 +5,8 @@ import time
 from datetime import datetime
 import argparse
 from colorama import Fore, Style, init
+from rich.progress import Progress, BarColumn, TextColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
+from rich import print as rprint
 
 init(autoreset=True) # colorama: reset after each print()
 
@@ -22,6 +24,14 @@ def print_ko():
     
 def print_error(msg):
     print(Fore.RED + msg)
+    
+def format_size(size_bytes: int) -> str:
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024: 
+        return f"{size_bytes/1024:.1f} kB"
+    else:
+        return f"{size_bytes/(1024*1024):.1f} MB"
 
 
 def open_serial_port() -> Serial:
@@ -96,14 +106,26 @@ def send_upload_command(ser) -> bool:
 
 def send_binary_file(ser) -> bool:
     ret = False
-    print(f"Sending file {Fore.CYAN}{BIN_FILE}{Fore.RESET}...", end="")
+    file_size = os.path.getsize(BIN_FILE)
+    rprint(f"Sending file [cyan]{BIN_FILE}[/cyan] ({format_size(file_size)})")
     
     try:
-        with open(BIN_FILE, 'rb') as f:
-            bin_content = f.read()
-        ser.write(bin_content)
-        ser.flush()
-        print_ok()
+        with Progress(TextColumn("  "),
+                      BarColumn(bar_width=30),
+                      DownloadColumn(),
+                      TransferSpeedColumn(),
+                      TimeRemainingColumn()) as progress:
+            task = progress.add_task("", total=file_size)
+            
+            with open(BIN_FILE, 'rb') as f:
+                chunk_size = 512
+                while True:
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    ser.write(chunk)
+                    ser.flush()
+                    progress.update(task, advance=len(chunk))
         ret = True
     except FileNotFoundError:
         print_ko()
