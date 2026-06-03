@@ -1,5 +1,6 @@
 import os
 import serial
+from serial import Serial
 import time
 from datetime import datetime
 import argparse
@@ -22,17 +23,24 @@ def print_ko():
 def print_error(msg):
     print(Fore.RED + msg)
 
-def upload_and_run(save_logs, show_logs):
+
+def open_serial_port() -> Serial:
+    ret = None
     print(f"\nOpening port {Style.BRIGHT}{PORT_COM}{Style.NORMAL}...", end="")
+    
     try:
         # Open port with a timeout
         ser = serial.Serial(PORT_COM, BAUDRATE, timeout=3)
         print_ok()
+        ret = ser
     except Exception as e:
         print_ko()
         print_error(f"Error opening port: {e}")
-        return
+    
+    return ret
 
+
+def wait_for_bootloader(ser):
     print("Waiting for RESET (switch on the board)...", end="")
     
     bootloader_detected = False
@@ -47,8 +55,11 @@ def upload_and_run(save_logs, show_logs):
                 print_ok()
                 bootloader_detected = True
 
-    # Send a key to stop auto boot
+
+def abort_autoboot(ser) -> bool:
+    ret = False
     print("Stopping automatic boot...", end="")
+    
     ser.reset_input_buffer()
     ser.write(b'\n') 
     abort_confirmed = False
@@ -61,44 +72,59 @@ def upload_and_run(save_logs, show_logs):
             
             if "Aborted." in buffer:
                 abort_confirmed = True
-    # time.sleep(0.2) # let the bootloader process
     if abort_confirmed:
         print_ok()
+        ret = True
     else:
         print_ko()
         print_error("\nError: Bootloader did not confirm the abort")
-        ser.close()
-        return
     
-    # Send 'u' to start upload
+    return ret
+
+
+def send_upload_command(ser) -> bool:
+    ret = False
     print("Sending upload command ('u')...", end="")
+    
     ser.write(b'u')
     time.sleep(0.5)
     print_ok()
     
-    # Send binary file
+    ret = True
+    return ret
+
+
+def send_binary_file(ser) -> bool:
+    ret = False
     print(f"Sending file {Fore.CYAN}{BIN_FILE}{Fore.RESET}...", end="")
+    
     try:
         with open(BIN_FILE, 'rb') as f:
             bin_content = f.read()
-            
         ser.write(bin_content)
         ser.flush()
         print_ok()
+        ret = True
     except FileNotFoundError:
         print_ko()
         print_error(f"Error: {BIN_FILE} not found.")
-        ser.close()
-        return
 
-    time.sleep(0.5)
-    
-    # Send 'e' to execute
+    return ret
+
+
+def send_execute_command(ser) -> bool:
+    ret = False
     print("Sending execute command ('e')...", end="")
+    
     ser.write(b'e')
     print_ok()
     
-    # Logs management
+    ret = True
+    return ret
+
+
+def handle_logs(ser, save_logs, show_logs):
+    log_file = None
     if save_logs:
         # Create log folder if it doesn't exist
         if not os.path.exists(LOG_FOLDER):
@@ -135,6 +161,33 @@ def upload_and_run(save_logs, show_logs):
     finally:
         if log_file:
             log_file.close()
+
+
+def upload_and_run(save_logs, show_logs):
+    ser = open_serial_port()
+    if ser is None:
+        return
+
+    wait_for_bootloader(ser)
+
+    try:
+        # Send a key to stop auto boot
+        if not abort_autoboot(ser): return
+        
+        # Send 'u' to start upload
+        if not send_upload_command(ser): return
+        
+        # Send binary file
+        if not send_binary_file(ser): return
+        time.sleep(0.5)
+        
+        # Send 'e' to execute
+        if not send_execute_command(ser): return
+        
+        # Logs management
+        handle_logs(ser, save_logs, show_logs)
+    
+    finally:
         ser.close()
 
 if __name__ == "__main__":
