@@ -18,6 +18,9 @@ def print_ok():
     
 def print_ko():
     print(Fore.RED + "KO")
+    
+def print_error(msg):
+    print(Fore.RED + msg)
 
 def upload_and_run(save_logs, show_logs):
     print(f"\nOpening port {Style.BRIGHT}{PORT_COM}{Style.NORMAL}...", end="")
@@ -27,7 +30,7 @@ def upload_and_run(save_logs, show_logs):
         print_ok()
     except Exception as e:
         print_ko()
-        print(f"Error opening port: {e}")
+        print_error(f"Error opening port: {e}")
         return
 
     print("Waiting for RESET (switch on the board)...", end="")
@@ -46,9 +49,26 @@ def upload_and_run(save_logs, show_logs):
 
     # Send a key to stop auto boot
     print("Stopping automatic boot...", end="")
+    ser.reset_input_buffer()
     ser.write(b'\n') 
-    time.sleep(0.2) # let the bootloader process
-    print_ok()
+    abort_confirmed = False
+    buffer = ""
+    timeout_abort = time.time() + 2.0
+    while not abort_confirmed and time.time() < timeout_abort:
+        if ser.in_waiting > 0:
+            chunk = ser.read(ser.in_waiting).decode("utf-8", errors="ignore")
+            buffer += chunk
+            
+            if "Aborted." in buffer:
+                abort_confirmed = True
+    # time.sleep(0.2) # let the bootloader process
+    if abort_confirmed:
+        print_ok()
+    else:
+        print_ko()
+        print_error("\nError: Bootloader did not confirm the abort")
+        ser.close()
+        return
     
     # Send 'u' to start upload
     print("Sending upload command ('u')...", end="")
@@ -67,7 +87,7 @@ def upload_and_run(save_logs, show_logs):
         print_ok()
     except FileNotFoundError:
         print_ko()
-        print(f"Error: {BIN_FILE} not found.")
+        print_error(f"Error: {BIN_FILE} not found.")
         ser.close()
         return
 
