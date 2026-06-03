@@ -50,27 +50,28 @@ def open_serial_port() -> Serial:
     return ret
 
 
-def wait_for_bootloader(ser):
+def wait_for_bootloader(ser, history: list[str]):
     print("Waiting for RESET (switch on the board)...", end="")
-    
     bootloader_detected = False
+    buffer = ""
     
     # Wait for a message from the bootloader
     while not bootloader_detected:
         if ser.in_waiting > 0:
-            line = ser.readline().decode('utf-8', errors='ignore')
+            chunk = ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
+            buffer += chunk
+            history.append(chunk)
             
             # Bootloader usually shows "NEORV32"
-            if "NEORV32" in line or "Bootloader" in line or "CMD" in line:
+            if "NEORV32" in buffer:
                 print_ok()
                 bootloader_detected = True
 
 
-def abort_autoboot(ser) -> bool:
+def abort_autoboot(ser, history: list[str]) -> bool:
     ret = False
-    print("Stopping automatic boot...", end="")
+    print("Aborting automatic boot...", end="")
     
-    ser.reset_input_buffer()
     ser.write(b'\n') 
     abort_confirmed = False
     buffer = ""
@@ -79,6 +80,7 @@ def abort_autoboot(ser) -> bool:
         if ser.in_waiting > 0:
             chunk = ser.read(ser.in_waiting).decode("utf-8", errors="ignore")
             buffer += chunk
+            history.append(chunk)
             
             if "Aborted." in buffer:
                 abort_confirmed = True
@@ -145,25 +147,36 @@ def send_execute_command(ser) -> bool:
     return ret
 
 
-def handle_logs(ser, save_logs, show_logs):
-    log_file = None
+def create_log_file():
+    # Create log folder if it doesn't exist
+    if not os.path.exists(LOG_FOLDER):
+        os.makedirs(LOG_FOLDER)
+    
+    # Log file name, format: YYYYMMDDhhmmss_logs.txt
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S_logs.txt")
+    filename = os.path.join(LOG_FOLDER, timestamp)
+    abs_path = os.path.abspath(filename)
+    rprint(f"Creating log file [cyan][link=file:///{abs_path}]{filename}[/link][/cyan]...", end="")
+    
+    # Open log file
+    log_file = open(filename, "w", encoding="utf-8", newline="")
+    print_ok()
+    
+    return log_file
+    
+
+def handle_logs(ser, log_file, save_logs, show_logs, history: list[str]):
     if save_logs:
-        # Create log folder if it doesn't exist
-        if not os.path.exists(LOG_FOLDER):
-            os.makedirs(LOG_FOLDER)
-        
-        # Log file name, format: YYYYMMDDhhmmss_logs.txt
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S_logs.txt")
-        filename = os.path.join(LOG_FOLDER, timestamp)
-        print(f"Creating log file {Fore.CYAN}{filename}{Fore.RESET}...", end="")
-        
-        # Open log file
-        log_file = open(filename, "w", encoding="utf-8", newline="")
-        print_ok()
-        
-        print("Listening to logs (Press Ctrl+C to stop)...")
+        print("\nListening to logs (Press Ctrl+C to stop)...")
     else:
         print("\nPress Ctrl+C to stop")
+    
+    boot_logs = "".join(history)
+    if show_logs:
+        print(boot_logs, end="")
+    if save_logs and log_file:
+        log_file.write(boot_logs)
+        log_file.flush()
     
     try:
         while True:
@@ -189,25 +202,23 @@ def upload_and_run(save_logs, show_logs):
     ser = open_serial_port()
     if ser is None:
         return
+    
+    # List that contains everything that is transmitted on the port since the boot
+    boot_history = []
 
-    wait_for_bootloader(ser)
+    wait_for_bootloader(ser, boot_history)
+    
+    log_file = None
+    if save_logs:
+        log_file = create_log_file()
 
     try:
-        # Send a key to stop auto boot
-        if not abort_autoboot(ser): return
-        
-        # Send 'u' to start upload
+        if not abort_autoboot(ser, boot_history): return
         if not send_upload_command(ser): return
-        
-        # Send binary file
         if not send_binary_file(ser): return
-        time.sleep(0.5)
-        
-        # Send 'e' to execute
         if not send_execute_command(ser): return
         
-        # Logs management
-        handle_logs(ser, save_logs, show_logs)
+        handle_logs(ser, log_file, save_logs, show_logs, boot_history)
     
     finally:
         ser.close()
