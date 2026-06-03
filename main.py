@@ -1,5 +1,8 @@
+import os
 import serial
 import time
+from datetime import datetime
+import argparse
 from colorama import Fore, Style, init
 
 init(autoreset=True) # colorama: reset after each print()
@@ -8,6 +11,7 @@ init(autoreset=True) # colorama: reset after each print()
 PORT_COM = 'COM6'
 BAUDRATE = 19200
 BIN_FILE = 'neorv32_exe.bin'
+LOG_FOLDER = "log"
 
 def print_ok():
     print(Fore.GREEN + "OK")
@@ -15,7 +19,7 @@ def print_ok():
 def print_ko():
     print(Fore.RED + "KO")
 
-def upload_and_run():
+def upload_and_run(save_logs, show_logs):
     print(f"\nOpening port {Style.BRIGHT}{PORT_COM}{Style.NORMAL}...", end="")
     try:
         # Open port with a timeout
@@ -53,7 +57,7 @@ def upload_and_run():
     print_ok()
     
     # Send binary file
-    print(f"Sending file {BIN_FILE}...", end="")
+    print(f"Sending file {Fore.CYAN}{BIN_FILE}{Fore.RESET}...", end="")
     try:
         with open(BIN_FILE, 'rb') as f:
             bin_content = f.read()
@@ -74,16 +78,51 @@ def upload_and_run():
     ser.write(b'e')
     print_ok()
     
-    # Optional: show program logs
-    print("\n--- Program logs ---")
+    # Logs management
+    if save_logs:
+        # Create log folder if it doesn't exist
+        if not os.path.exists(LOG_FOLDER):
+            os.makedirs(LOG_FOLDER)
+        
+        # Log file name, format: YYYYMMDDhhmmss_logs.txt
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S_logs.txt")
+        filename = os.path.join(LOG_FOLDER, timestamp)
+        print(f"Creating log file {Fore.CYAN}{filename}{Fore.RESET}...", end="")
+        
+        # Open log file
+        log_file = open(filename, "w", encoding="utf-8", newline="")
+        print_ok()
+        
+        print("Listening to logs (Press Ctrl+C to stop)...")
+    else:
+        print("\nPress Ctrl+C to stop")
+    
     try:
         while True:
             if ser.in_waiting > 0:
-                print(ser.read(ser.in_waiting).decode('utf-8', errors='ignore'), end='')
+                # Read all available data
+                serial_data = ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
+                
+                if show_logs:
+                    print(serial_data, end="")
+                
+                if save_logs and log_file:
+                    log_file.write(serial_data)
+                    log_file.flush()
+                    
     except KeyboardInterrupt:
         print("\nEnd of script.")
     finally:
+        if log_file:
+            log_file.close()
         ser.close()
 
 if __name__ == "__main__":
-    upload_and_run()
+    # Setup argument parser
+    parser = argparse.ArgumentParser(description="NEORV32 Flasher and Logger")
+    parser.add_argument("--save-logs", action="store_true", help="Save the output logs into a file")
+    parser.add_argument("--show-logs", action="store_true", help="Display the output logs in the terminal")
+    args = parser.parse_args()
+    
+    # Call main function with parsed options
+    upload_and_run(save_logs=args.save_logs, show_logs=args.show_logs)
