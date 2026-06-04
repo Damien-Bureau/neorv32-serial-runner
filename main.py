@@ -233,7 +233,7 @@ def send_execute_command(ser) -> bool:
     return ret
 
 
-def create_log_file():
+def create_log_file():    
     # Create log folder if it doesn't exist
     if not os.path.exists(Config.LOG_DIR):
         os.makedirs(Config.LOG_DIR)
@@ -244,7 +244,6 @@ def create_log_file():
     
     # Open log file
     log_file = open(filename, "w", encoding="utf-8", newline="")
-    print_ok()
     
     return log_file
     
@@ -313,12 +312,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Clear terminal
-    Console().clear()    
-    
-    # Create log if needed
-    log_file = None
-    if args.save_logs:
-        log_file = create_log_file()
+    Console().clear()
         
     # Auto detect com port
     if args.port:
@@ -337,6 +331,11 @@ if __name__ == "__main__":
             print_ko()
             Config.COM_PORT = "[red]NONE[/red]"
             handle_no_port()
+    
+    # Create log file if needed
+    log_file = None
+    if args.save_logs:
+        log_file = create_log_file()
     
     # Main program
     print_banner(save_logs=args.save_logs, show_logs=args.show_logs, log_file=log_file)
