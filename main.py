@@ -7,6 +7,8 @@ import argparse
 from colorama import Fore, Style, init
 from rich.progress import Progress, BarColumn, TextColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from rich import print as rprint
+from rich.console import Console
+from rich.panel import Panel
 
 init(autoreset=True) # colorama: reset after each print()
 
@@ -32,6 +34,16 @@ def format_size(size_bytes: int) -> str:
         return f"{size_bytes/1024:.1f} kB"
     else:
         return f"{size_bytes/(1024*1024):.1f} MB"
+
+
+def print_banner():
+    banner_text = """[bold]Options available[/bold]
+    --save-logs: create a .txt log file and store everything that is transmitted on the serial port
+    --show-logs: show everything that is transmitted on the serial port in the current terminal"""
+    rprint(Panel(banner_text,
+                 title="[bold]NEORV32 Serial Runner[/bold]",
+                 title_align="center",
+                 border_style="cyan"))
 
 
 def open_serial_port() -> Serial:
@@ -225,10 +237,14 @@ def upload_and_run(save_logs, show_logs):
 
 if __name__ == "__main__":
     # Setup argument parser
-    parser = argparse.ArgumentParser(description="NEORV32 Flasher and Logger")
+    parser = argparse.ArgumentParser(description="NEORV32 Serial Runner")
     parser.add_argument("--save-logs", action="store_true", help="Save the output logs into a file")
     parser.add_argument("--show-logs", action="store_true", help="Display the output logs in the terminal")
     args = parser.parse_args()
     
-    # Call main function with parsed options
+    Console().clear()
+    print_banner()
+    
     upload_and_run(save_logs=args.save_logs, show_logs=args.show_logs)
+    
+    print()
