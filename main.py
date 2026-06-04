@@ -1,4 +1,5 @@
 import os
+from io import TextIOWrapper
 from serial import Serial
 import time
 from datetime import datetime
@@ -36,15 +37,29 @@ def format_size(size_bytes: int) -> str:
         return f"{size_bytes/(1024*1024):.1f} MB"
 
 
-def print_banner():
-    banner_text = f"""[bold]TARGET CONFIG[/bold]
-    • Port      : {Config.COM_PORT} ({Config.BAUDRATE} baud)
-    • Binary    : {Config.BIN_FILE}
-    • Log Dir   : {Config.LOG_DIR}
+def print_banner(save_logs: bool, show_logs: bool, log_file: TextIOWrapper | None):
+    bin_folder_path = os.path.dirname(os.path.abspath(Config.BIN_FILE))
+    log_folder_path = os.path.abspath(Config.LOG_DIR)
+    if save_logs and log_file:
+        log_file_path = os.path.abspath(log_file.name)
+        log_file_name = os.path.basename(log_file_path) if log_file_path else "N/A"
+        log_file_link = f" ([cyan][link=file:///{log_file_path}]{log_file_name}[/link][/cyan])" if save_logs and log_file else ""
+    else:
+        log_file_link = ""
     
-[bold]OPTIONS AVAILABLE[/bold]
+    log_status = "[green]Enabled[/green]" if save_logs else "[dim]Disabled[/dim]"
+    show_status = "[green]Enabled[/green]" if show_logs else "[dim]Disabled[/dim]"
+    
+    banner_text = f"""[bold]OPTIONS AVAILABLE[/bold]
     --save-logs: create a .txt log file and store everything that is transmitted on the serial port
-    --show-logs: show everything that is transmitted on the serial port in the current terminal"""
+    --show-logs: show everything that is transmitted on the serial port in the current terminal
+    
+[bold]CONFIG[/bold]
+    • Port      : {Config.COM_PORT} ({Config.BAUDRATE} baud)
+    • Binary    : [link=file:///{bin_folder_path}]{Config.BIN_FILE}[/link]
+    • Log Dir   : [link=file:///{log_folder_path}]{Config.LOG_DIR}[/link]
+    • Save logs : {log_status}{log_file_link}
+    • Show logs : {show_status}"""
     
     rprint(Panel(banner_text,
                  title="[bold]NEORV32 Serial Runner[/bold]",
@@ -69,7 +84,7 @@ def open_serial_port() -> Serial:
 
 
 def wait_for_bootloader(ser, history: list[str]):
-    print("Waiting for RESET (switch on the board)...", end="")
+    print("Waiting for bootloader (use reset switch on the board)...", end="")
     bootloader_detected = False
     buffer = ""
     
@@ -127,7 +142,7 @@ def send_upload_command(ser) -> bool:
 def send_binary_file(ser) -> bool:
     ret = False
     file_size = os.path.getsize(Config.BIN_FILE)
-    rprint(f"Sending file [cyan]{Config.BIN_FILE}[/cyan] ({format_size(file_size)})")
+    rprint(f"Sending binary file [cyan]{Config.BIN_FILE}[/cyan] ({format_size(file_size)})")
     
     try:
         with Progress(TextColumn("  "),
@@ -173,8 +188,6 @@ def create_log_file():
     # Log file name, format: YYYYMMDDhhmmss_logs.txt
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S_logs.txt")
     filename = os.path.join(Config.LOG_DIR, timestamp)
-    abs_path = os.path.abspath(filename)
-    rprint(f"Creating log file [cyan][link=file:///{abs_path}]{filename}[/link][/cyan]...", end="")
     
     # Open log file
     log_file = open(filename, "w", encoding="utf-8", newline="")
@@ -207,16 +220,13 @@ def handle_logs(ser, log_file, save_logs, show_logs, history: list[str]):
                 
                 if save_logs and log_file:
                     log_file.write(serial_data)
-                    log_file.flush()
-                    
-    except KeyboardInterrupt:
-        print("\nEnd of script.")
+                    log_file.flush()                
     finally:
         if log_file:
             log_file.close()
 
 
-def upload_and_run(save_logs, show_logs):
+def upload_and_run(save_logs, show_logs, log_file):
     ser = open_serial_port()
     if ser is None:
         return
@@ -224,13 +234,8 @@ def upload_and_run(save_logs, show_logs):
     # List that contains everything that is transmitted on the port since the boot
     boot_history = []
 
-    wait_for_bootloader(ser, boot_history)
-    
-    log_file = None
-    if save_logs:
-        log_file = create_log_file()
-
     try:
+        wait_for_bootloader(ser, boot_history)
         if not abort_autoboot(ser, boot_history): return
         if not send_upload_command(ser): return
         if not send_binary_file(ser): return
@@ -238,6 +243,8 @@ def upload_and_run(save_logs, show_logs):
         
         handle_logs(ser, log_file, save_logs, show_logs, boot_history)
     
+    except KeyboardInterrupt:
+        print("\n\nEnd of script.")
     finally:
         ser.close()
 
@@ -248,9 +255,16 @@ if __name__ == "__main__":
     parser.add_argument("--show-logs", action="store_true", help="Display the output logs in the terminal")
     args = parser.parse_args()
     
-    Console().clear()
-    print_banner()
+    # Clear terminal
+    Console().clear()    
     
-    upload_and_run(save_logs=args.save_logs, show_logs=args.show_logs)
+    # Create log if needed
+    log_file = None
+    if args.save_logs:
+        log_file = create_log_file()
+    
+    # Main program
+    print_banner(save_logs=args.save_logs, show_logs=args.show_logs, log_file=log_file)
+    upload_and_run(save_logs=args.save_logs, show_logs=args.show_logs, log_file=log_file)
     
     print()
