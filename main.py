@@ -1,5 +1,4 @@
 import os
-import serial
 from serial import Serial
 import time
 from datetime import datetime
@@ -12,11 +11,12 @@ from rich.panel import Panel
 
 init(autoreset=True) # colorama: reset after each print()
 
-# --- CONFIGURATION ---
-PORT_COM = 'COM6'
-BAUDRATE = 19200
-BIN_FILE = 'neorv32_exe.bin'
-LOG_FOLDER = "log"
+class Config:
+    COM_PORT: str = 'COM6'
+    BAUDRATE: int = 19200
+    BIN_FILE: str = 'neorv32_exe.bin'
+    LOG_DIR: str = "log"
+
 
 def print_ok():
     print(Fore.GREEN + "OK")
@@ -37,9 +37,15 @@ def format_size(size_bytes: int) -> str:
 
 
 def print_banner():
-    banner_text = """[bold]Options available[/bold]
+    banner_text = f"""[bold]TARGET CONFIG[/bold]
+    • Port      : {Config.COM_PORT} ({Config.BAUDRATE} baud)
+    • Binary    : {Config.BIN_FILE}
+    • Log Dir   : {Config.LOG_DIR}
+    
+[bold]OPTIONS AVAILABLE[/bold]
     --save-logs: create a .txt log file and store everything that is transmitted on the serial port
     --show-logs: show everything that is transmitted on the serial port in the current terminal"""
+    
     rprint(Panel(banner_text,
                  title="[bold]NEORV32 Serial Runner[/bold]",
                  title_align="center",
@@ -48,11 +54,11 @@ def print_banner():
 
 def open_serial_port() -> Serial:
     ret = None
-    print(f"\nOpening port {Style.BRIGHT}{PORT_COM}{Style.NORMAL}...", end="")
+    print(f"\nOpening port {Style.BRIGHT}{Config.COM_PORT}{Style.NORMAL}...", end="")
     
     try:
         # Open port with a timeout
-        ser = serial.Serial(PORT_COM, BAUDRATE, timeout=3)
+        ser = Serial(Config.COM_PORT, Config.BAUDRATE, timeout=3)
         print_ok()
         ret = ser
     except Exception as e:
@@ -120,8 +126,8 @@ def send_upload_command(ser) -> bool:
 
 def send_binary_file(ser) -> bool:
     ret = False
-    file_size = os.path.getsize(BIN_FILE)
-    rprint(f"Sending file [cyan]{BIN_FILE}[/cyan] ({format_size(file_size)})")
+    file_size = os.path.getsize(Config.BIN_FILE)
+    rprint(f"Sending file [cyan]{Config.BIN_FILE}[/cyan] ({format_size(file_size)})")
     
     try:
         with Progress(TextColumn("  "),
@@ -131,7 +137,7 @@ def send_binary_file(ser) -> bool:
                       TimeRemainingColumn()) as progress:
             task = progress.add_task("", total=file_size)
             
-            with open(BIN_FILE, 'rb') as f:
+            with open(Config.BIN_FILE, 'rb') as f:
                 chunk_size = 512
                 while True:
                     chunk = f.read(chunk_size)
@@ -143,7 +149,7 @@ def send_binary_file(ser) -> bool:
         ret = True
     except FileNotFoundError:
         print_ko()
-        print_error(f"Error: {BIN_FILE} not found.")
+        print_error(f"Error: {Config.BIN_FILE} not found.")
 
     return ret
 
@@ -161,12 +167,12 @@ def send_execute_command(ser) -> bool:
 
 def create_log_file():
     # Create log folder if it doesn't exist
-    if not os.path.exists(LOG_FOLDER):
-        os.makedirs(LOG_FOLDER)
+    if not os.path.exists(Config.LOG_DIR):
+        os.makedirs(Config.LOG_DIR)
     
     # Log file name, format: YYYYMMDDhhmmss_logs.txt
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S_logs.txt")
-    filename = os.path.join(LOG_FOLDER, timestamp)
+    filename = os.path.join(Config.LOG_DIR, timestamp)
     abs_path = os.path.abspath(filename)
     rprint(f"Creating log file [cyan][link=file:///{abs_path}]{filename}[/link][/cyan]...", end="")
     
