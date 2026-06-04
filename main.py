@@ -52,8 +52,9 @@ def print_banner(save_logs: bool, show_logs: bool, log_file: TextIOWrapper | Non
     show_status = "[green]Enabled[/green]" if show_logs else "[dim]Disabled[/dim]"
     
     banner_text = f"""[bold]OPTIONS AVAILABLE[/bold]
-    --save-logs: create a .txt log file and store everything that is transmitted on the serial port
-    --show-logs: show everything that is transmitted on the serial port in the current terminal
+    --save-logs     : create a .txt log file and store everything that is transmitted on the serial port
+    --show-logs     : show everything that is transmitted on the serial port in the current terminal
+    --port, -p PORT : force a specific COM port (e.g., COM6 or /dev/ttyUSB0)
     
 [bold]CONFIG[/bold]
     • Port      : [green]{Config.COM_PORT}[/green] ({Config.BAUDRATE} baud)
@@ -308,7 +309,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NEORV32 Serial Runner")
     parser.add_argument("--save-logs", action="store_true", help="Save the output logs into a file")
     parser.add_argument("--show-logs", action="store_true", help="Display the output logs in the terminal")
-    parser.add_argument("--port", type=str, help="Force a specific COM port (e.g., COM6 or /dev/ttyUSB0)")
+    parser.add_argument("-p", "--port", type=str, help="Force a specific COM port (e.g., COM6 or /dev/ttyUSB0)")
     args = parser.parse_args()
     
     # Clear terminal
