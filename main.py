@@ -88,23 +88,28 @@ def check_port(port) -> bool:
 
 
 def auto_detect_port() -> str | None:
-    print("Detecting serial port...", end="")
     start_time = time.time()
     timeout = start_time + 5
     
+    last_seconds_left = -1
     while time.time() < timeout:
+        seconds_left = int(timeout - time.time() + 0.9)
+        if seconds_left != last_seconds_left and seconds_left > 0:
+            print(f"\rDetecting serial port...{Style.DIM}{seconds_left}s{Style.NORMAL}", end="", flush=True)
+            last_seconds_left = seconds_left
+        
         ports = list(list_ports.comports())
         
-        if not ports:
-            return None
+        if ports:
+            for port in ports:
+                desc = port.description.lower()
+                if "silicon labs" in desc or "uart" in desc:
+                    print(f"\rDetecting serial port...", end="", flush=True)
+                    return port.device
         
-        for port in ports:
-            desc = port.description.lower()
-            if "silicon labs" in desc or "uart" in desc:
-                return port.device
-        
-        time.sleep(0.5)
+        time.sleep(0.1)
     
+    print(f"\rDetecting serial port...", end="", flush=True)
     return None
 
 
@@ -296,6 +301,7 @@ def upload_and_run(save_logs, show_logs, log_file):
         print_error(f"\n\n{e}")
     finally:
         ser.close()
+
 
 if __name__ == "__main__":
     # Setup argument parser
