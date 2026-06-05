@@ -399,6 +399,11 @@ def upload_and_run(save_logs, show_logs, log_file):
     except SerialException as e:
         print_error(f"\n\n{e}")
     finally:
+        if save_logs and log_file:
+            log_file_abspath = os.path.abspath(log_file.name)
+            log_file_relpath = os.path.relpath(log_file.name)
+            log_file_link = f"[cyan][link=file:///{log_file_abspath}]{log_file_relpath}[/link][/cyan]"
+            rprint(f"Log file saved here: {log_file_link}")
         ser.close()
 
 
