@@ -4,7 +4,7 @@ title NEORV32 Serial Runner
 cls
 
 :: Activate Python virtual environment
-call .venv_windows\Scripts\activate.bat
+call .venv\Scripts\activate.bat
 
 :: Launch program
-python main.py --show-logs --save-logs
+python main.py %*
