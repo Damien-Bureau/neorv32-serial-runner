@@ -5,6 +5,8 @@ from serial.tools import list_ports
 import time
 from datetime import datetime
 import argparse
+import threading
+import msvcrt
 from colorama import Fore, Style, init
 from rich.progress import Progress, BarColumn, TextColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from rich import print as rprint
@@ -269,6 +271,44 @@ def handle_logs(ser, log_file, save_logs, show_logs, history: list[str]):
         log_file.write(boot_logs)
         log_file.flush()
     
+    # Flag to stop thread properly when Ctrl+C occurs
+    stop_interactive = threading.Event()
+    
+    # Background function that will catch keyboard inputs
+    def watch_keyboard():
+        while not stop_interactive.is_set():
+            # Check if key has been pressed
+            if msvcrt.kbhit():
+                # Get pressed character
+                char = msvcrt.getch()
+                decoded_char = char.decode('utf-8', errors='ignore')
+                display_char = '\n' if decoded_char == '\r' else decoded_char
+                
+                # Stop if Ctrl+C is pressed
+                if char == b'\x03':
+                    break
+                
+                try:
+                    # Send char on serial port
+                    ser.write(char)
+                    ser.flush()
+                    
+                    # Local echo
+                    if show_logs:
+                        rprint(f"[magenta]{display_char}[/magenta]", end="", flush=True)
+                    if save_logs and log_file:
+                        log_file.write(display_char)
+                        log_file.flush()
+                except Exception:
+                    break
+            
+            # Short break to avoid CPU saturation
+            time.sleep(0.01)
+
+    # Start thread in daemon mode (dies if main dies)
+    keyboard_thread = threading.Thread(target=watch_keyboard, daemon=True)
+    keyboard_thread.start()
+    
     try:
         while True:
             if ser.in_waiting > 0:
@@ -282,6 +322,7 @@ def handle_logs(ser, log_file, save_logs, show_logs, history: list[str]):
                     log_file.write(serial_data)
                     log_file.flush()                
     finally:
+        stop_interactive.set() # Stop background thread
         if log_file:
             log_file.close()
 

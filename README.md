@@ -27,6 +27,7 @@ A user-friendly tool to easily upload and run compiled binary files onto a NEORV
 - **Dynamic Configuration Banner:** Displays a clean configuration panel at startup with clickable file links.
 - **Real-time Transfer Progress:** Shows a beautiful interactive progress bar during the binary file upload.
 - **Log Management:** Optional logging feature to record everything transmitted over the serial port into organized log files.
+- **Interactive serial communication:** Allow sending characters through the serial port.
 
 
 ## Getting started
