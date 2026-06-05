@@ -99,7 +99,7 @@ def auto_detect_port() -> str | None:
             print(f"\rDetecting serial port...{Style.DIM}{seconds_left}s{Style.NORMAL}", end="", flush=True)
             last_seconds_left = seconds_left
         
-        ports = list(list_ports.comports())
+        ports = list_ports.comports()
         
         if ports:
             for port in ports:
@@ -117,6 +117,14 @@ def auto_detect_port() -> str | None:
 def handle_no_port():
     print_error("\nNo serial port detected.")
     print("Please check your connections or enter manually the port using the --port argument.\n")
+    
+    # Print available ports
+    ports = list_ports.comports()
+    ports_str = ""
+    for port in ports:
+        ports_str += f"\n  • {port.description}"
+    print(f"Available ports: {ports_str if ports else 'None'}\n")
+    
     exit(1)
 
 
