@@ -156,12 +156,17 @@ def wait_for_bootloader(ser, history: list[str]):
         if ser.in_waiting > 0:
             chunk = ser.read(ser.in_waiting).decode('utf-8', errors='ignore')
             buffer += chunk
-            history.append(chunk)
             
             # Bootloader usually shows "NEORV32"
             if "NEORV32" in buffer:
                 print_ok()
                 bootloader_detected = True
+                
+                # Clean unwanted logs before bootloader
+                start_index = buffer.find("<< NEORV32")
+                clean_boot_msg = buffer[start_index:]
+                history.clear()
+                history.append(clean_boot_msg)
 
 
 def abort_autoboot(ser, history: list[str]) -> bool:
