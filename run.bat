@@ -8,3 +8,5 @@ call .venv\Scripts\activate.bat
 
 :: Launch program
 python main.py %*
+
+pause
