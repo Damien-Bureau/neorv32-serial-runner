@@ -41,22 +41,34 @@ if /i "%CHOICE_SHOW%"=="N" goto question_save
 echo %RED%Invalid choice, please enter Y or N.%RESET%
 goto question_show
 
-:question_save
 :: Second arg: Save Logs
+:question_save
 :question_save_loop
 set "CHOICE_SAVE=N"
 set /p "CHOICE_SAVE=Save serial output into a log file? (y/N) : "
 if /i "%CHOICE_SAVE%"=="Y" (
     set "ARGS=%ARGS% --save-logs"
-    goto launch
+    goto question_bin
 )
-if /i "%CHOICE_SAVE%"=="N" goto launch
+if /i "%CHOICE_SAVE%"=="N" goto question_bin
 echo %RED%Invalid choice, please enter Y or N.%RESET%
 goto question_save_loop
 
+:: Third arg: Pick Binary File
+:question_bin
+set "CHOICE_BIN=N"
+set /p "CHOICE_BIN=Select binary file using File Explorer? (y/N) : "
+if /i "%CHOICE_BIN%"=="Y" (
+    set "ARGS=%ARGS% --bin"
+    goto launch
+)
+if /i "%CHOICE_BIN%"=="N" goto launch
+echo %RED%Invalid choice, please enter Y or N.%RESET%
+goto question_bin
+
 :launch
 echo.
-echo %GREEN%Starting application with options:%RESET% %ARGS%
+echo Starting application with options:%ARGS%
 echo.
 
 :: Activate Python virtual environment
@@ -66,5 +78,4 @@ call .venv\Scripts\activate.bat
 python main.py %ARGS%
 
 echo.
-echo %CYAN%Process finished.%RESET%
 pause
