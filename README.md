@@ -15,6 +15,8 @@ A user-friendly tool to easily upload and run compiled binary files onto a NEORV
         - [Import binary file](#import-binary-file)
         - [Run the script](#run-the-script)
             - [On Windows Recommended](#on-windows-recommended)
+                - [A. Interactive Mode](#a-interactive-mode)
+                - [B. Direct Mode CLI arguments](#b-direct-mode-cli-arguments)
             - [Manual terminal or Linux](#manual-terminal-or-linux)
         - [Available arguments](#available-arguments)
     - [Future improvements](#future-improvements)
@@ -69,15 +71,21 @@ You need to copy your compiled `neorv32_exe.bin` file into the repository's root
 
 ### 2. Run the script
 #### On Windows (Recommended)
-Use the included [run.bat](run.bat) script. It automatically handles the virtual environment activation for you and forwards any arguments to the Python main program:
+Use the included [run.bat](run.bat) script. It automatically handles the virtual environment activation for you and offers two ways to launch the application:
+
+##### A. Interactive Mode
+If you double-click the file `run.bat` or run it without arguments, it will open an interactive setup menu directly inside your terminal. It will ask you with a prompt to validate every available configuration.
+
+##### B. Direct Mode (CLI arguments)
+If you pass any arguments, the script will bypass the questions and launch the application immediately with your custom configuration.
 ```bash
-# Run with default settigns
+# Launch with default settings (Interactive mode)
 run.bat
 
-# Run and enable logs reflection and local saving
+# Bypass menu: Force logs reflection and local saving directly
 run.bat --show-logs --save-logs
 
-# Force a specific COM port bypassing the auto-detection
+# Bypass menu: Force a specific COM port bypassing the auto-detection
 run.bat -p COM6
 ```
 
@@ -95,7 +103,6 @@ python main.py -p /dev/ttyUSB0
 - `-p PORT`, `--port PORT`: Manually forces the application to use a specific serial port interface.
 
 ## Future improvements
-- Allow sending characters back through the serial port.
 - Graphical User Interface (`--gui` argument) containing configuration fields and file pickers.
 - Configuration saving/loading mechanisms (`--save-config` and `--use--config` JSON arguments)
 
