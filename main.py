@@ -1,4 +1,5 @@
 import os
+import sys
 from io import TextIOWrapper
 from serial import Serial, SerialException
 from serial.tools import list_ports
@@ -170,7 +171,7 @@ def handle_no_port():
         ports_str += f"\n  • {port.description}"
     print(f"Available ports: {ports_str if ports else 'None'}\n")
     
-    exit(1)
+    sys.exit(1)
 
 
 def open_serial_port() -> Serial:
@@ -381,10 +382,10 @@ def handle_logs(ser, log_file, save_logs, show_logs, history: list[str]):
             log_file.close()
 
 
-def upload_and_run(save_logs, show_logs, log_file):
+def upload_and_run(save_logs, show_logs, log_file) -> int:
     ser = open_serial_port()
     if ser is None:
-        return
+        return 1
     
     # List that contains everything that is transmitted on the port since the boot
     boot_history = []
@@ -400,6 +401,7 @@ def upload_and_run(save_logs, show_logs, log_file):
     
     except KeyboardInterrupt:
         print("\n\nEnd of script.")
+        return 1
     except SerialException as e:
         print_error(f"\n\n{e}")
     finally:
@@ -409,6 +411,8 @@ def upload_and_run(save_logs, show_logs, log_file):
             log_file_link = f"[cyan][link=file:///{log_file_abspath}]{log_file_relpath}[/link][/cyan]"
             rprint(f"Log file saved here: {log_file_link}")
         ser.close()
+            
+    return 0
 
 
 if __name__ == "__main__":
@@ -428,7 +432,7 @@ if __name__ == "__main__":
         if check_port(args.port):
             Config.COM_PORT = args.port
         else:
-            exit(1)
+            sys.exit(1)
     else:
         port = auto_detect_port()
         if port:
@@ -447,6 +451,7 @@ if __name__ == "__main__":
             time.sleep(0.5)
         else:
             print_error("No file selected. Exiting")
+            sys.exit(1)
     else:
         print("Looking for default binary file...", end="", flush=True)
     
@@ -455,6 +460,7 @@ if __name__ == "__main__":
     else:
         print_ko()
         print_error(f"Binary file not found or invalid: '{Config.BIN_FILE}. Exiting.")
+        sys.exit(1)
         
     # Create log file if needed
     log_file = None
@@ -467,6 +473,8 @@ if __name__ == "__main__":
     
     # Main program
     print_banner(save_logs=args.save_logs, show_logs=args.show_logs, log_file=log_file)
-    upload_and_run(save_logs=args.save_logs, show_logs=args.show_logs, log_file=log_file)
+    error_code: int = upload_and_run(save_logs=args.save_logs, show_logs=args.show_logs, log_file=log_file)
     
     print()
+    
+    sys.exit(error_code)

@@ -86,8 +86,22 @@ echo.
 :: Activate Python virtual environment
 call .venv\Scripts\activate.bat
 
+:loop_launch
 :: Launch program with the configured or forwarded arguments
 python main.py %ARGS%
 
+:: Get error code from Python application
+set "PYTHON_ERROR=%errorlevel%"
+
+:: Exit if no error
+if "%PYTHON_ERROR%"=="0" goto end_process
+
+:: Ask to retry if error
+echo.
+set "RETRY=Y"
+set /p "RETRY=Application failed. Retry now? (Y/n) : "
+if /i "%RETRY%"=="Y" goto loop_launch
+
+:end_process
 echo.
 pause
