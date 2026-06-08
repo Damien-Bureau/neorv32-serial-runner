@@ -3,7 +3,7 @@
 title NEORV32 Serial Runner - Launcher
 cls
 
-:: FORCE UTF-8 ENCODING
+:: Force UTF-8 encoding
 chcp 65001 >nul
 
 :: Force Windows to get the real ESC character for ANSI colors
@@ -28,6 +28,18 @@ echo %CYAN%╔══════════════════════
 echo %CYAN%║        NEORV32 Serial Runner - Launch         ║%RESET%
 echo %CYAN%╚═══════════════════════════════════════════════╝%RESET%
 echo.
+
+:: Check that Python virtual environment exists
+<nul set /p "=Checking Python virtual environment..."
+if not exist ".venv\Scripts\activate.bat" (
+    echo %RED%KO%RESET%
+    echo.
+    echo %YELLOW%Please run setup.bat first to install the required packages.%RESET%
+    echo.
+    pause
+    exit /b
+)
+echo %GREEN%OK%RESET%
 
 :: First arg: Show Logs
 :question_show
