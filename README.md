@@ -12,7 +12,7 @@ A user-friendly tool to easily upload and run compiled binary files onto a NEORV
         - [Quick install Windows](#quick-install-windows)
         - [Manual install](#manual-install)
     - [Usage](#usage)
-        - [Import binary file](#import-binary-file)
+        - [Select binary file](#select-binary-file)
         - [Run the script](#run-the-script)
             - [On Windows Recommended](#on-windows-recommended)
                 - [A. Interactive Mode](#a-interactive-mode)
@@ -26,10 +26,11 @@ A user-friendly tool to easily upload and run compiled binary files onto a NEORV
 ## Features
 
 - **Smart Auto-Detection:** Automatically scans and detects the correct UART/Silicon Labs COM port.
-- **Dynamic Configuration Banner:** Displays a clean configuration panel at startup with clickable file links.
+- **Native File Picker:** Easily browse and select any .bin file directly from Windows Explorer.
+- **Dynamic Configuration Banner:** Displays a clean configuration panel at startup with clickable file links (using relative paths for neatness).
 - **Real-time Transfer Progress:** Shows a beautiful interactive progress bar during the binary file upload.
 - **Log Management:** Optional logging feature to record everything transmitted over the serial port into organized log files.
-- **Interactive serial communication:** Allow sending characters through the serial port.
+- **Interactive serial communication:** Allow sending characters through the serial port with a local echo mechanism.
 
 
 ## Getting started
@@ -66,15 +67,15 @@ It will:
 
 
 ## Usage
-### 1. Import binary file
-You need to copy your compiled `neorv32_exe.bin` file into the repository's root directory.
+### 1. Select binary file
+By default, the script looks for a file named `neorv32_exe.bin` in the repository's root directory. However, you can use a **native Windows File Picker** to select any compiled binary file on your computer without moving it.
 
 ### 2. Run the script
 #### On Windows (Recommended)
 Use the included [run.bat](run.bat) script. It automatically handles the virtual environment activation for you and offers two ways to launch the application:
 
 ##### A. Interactive Mode
-If you double-click the file `run.bat` or run it without arguments, it will open an interactive setup menu directly inside your terminal. It will ask you with a prompt to validate every available configuration.
+If you double-click the file [run.bat](run.bat) or run it without arguments, it will open an interactive setup menu directly inside your terminal. It will prompt you step-by-step to toggle log mirroring, log saving, and ask if you want to open the File Explorer to choose a custom binary file.
 
 ##### B. Direct Mode (CLI arguments)
 If you pass any arguments, the script will bypass the questions and launch the application immediately with your custom configuration.
@@ -82,8 +83,11 @@ If you pass any arguments, the script will bypass the questions and launch the a
 # Launch with default settings (Interactive mode)
 run.bat
 
-# Bypass menu: Force logs reflection and local saving directly
-run.bat --show-logs --save-logs
+# Bypass menu: Open file explorer directly to select the binary
+run.bat --bin
+
+# Bypass menu: Force logs reflection, local saving, and custom biniary selection
+run.bat --show-logs --save-logs --bin
 
 # Bypass menu: Force a specific COM port bypassing the auto-detection
 run.bat -p COM6
@@ -93,16 +97,18 @@ run.bat -p COM6
 Make sure your virtual environment is active, then execute the Python script directly:
 ```bash
 python main.py
+python main.py --bin
 python main.py --show-logs --save-logs
 python main.py -p /dev/ttyUSB0
 ```
 
 ### Available arguments
+- `-b`, `--bin`: Opens a native Windows file explorer dialog to manually select the compiled .bin file to flash.
 - `--show-logs`: Mirrors everything transmitted on the serial port directly inside your current terminal.
-- `--save-logs`: Creates a `.txt` file inside a `log` directory and saves the entire session output.
+- `--save-logs`: Creates a .txt file inside a log directory and saves the entire session output.
 - `-p PORT`, `--port PORT`: Manually forces the application to use a specific serial port interface.
 
 ## Future improvements
-- Graphical User Interface (`--gui` argument) containing configuration fields and file pickers.
-- Configuration saving/loading mechanisms (`--save-config` and `--use--config` JSON arguments)
-
+- Save binary file location history.
+- Add a full Graphical User Interface (`--gui` argument) containing configuration fields and toggles.
+- Configuration saving/loading mechanisms (`--save-config` and `--use-config` JSON arguments).
