@@ -77,6 +77,10 @@ def pick_binary_file() -> str | None:
         return None
 
 
+def check_binary_file(file) -> bool:
+    return os.path.isfile(file) and file.lower().endswith('.bin')
+
+
 def print_banner(save_logs: bool, show_logs: bool, log_file: TextIOWrapper | None):
     bin_folder_abspath = os.path.dirname(os.path.abspath(Config.BIN_FILE))
     bin_file_relpath = os.path.relpath(Config.BIN_FILE)
@@ -443,7 +447,14 @@ if __name__ == "__main__":
             time.sleep(0.5)
         else:
             print_error("No file selected. Exiting")
-            exit(1)
+    else:
+        print("Looking for default binary file...", end="", flush=True)
+    
+    if check_binary_file(Config.BIN_FILE):
+        print_ok()
+    else:
+        print_ko()
+        print_error(f"Binary file not found or invalid: '{Config.BIN_FILE}. Exiting.")
         
     # Create log file if needed
     log_file = None
